@@ -7,18 +7,34 @@ const app = express();
 const port = 3000;
 
 app.get('/send', async (req, res) => {
+  // Ensure the file exists before attempting to send it
+  const filePath = './enginejson1.txt';
+  if (!fs.existsSync(filePath)) {
+    return res.status(400).send('File does not exist');
+  }
+
   const form = new FormData();
-  form.append('file', fs.createReadStream('./enginejson1.txt')); // Ensure this file exists
+  form.append('file', fs.createReadStream(filePath));
 
   try {
+    // Make sure to pass the form as the body, not as JSON
     const response = await got.post('http://localhost:3001/upload', {
       body: form,
-      // got v11 and later automatically set the appropriate headers based on the FormData instance
+      // got will automatically set the correct Content-Type header for FormData
+      hooks: {
+        beforeRequest: [
+          options => {
+            console.log('Requesting', options.url.toString());
+          }
+        ]
+      }
     });
+
+    // Response handling
     console.log(response.body);
     res.send('File sent successfully');
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error:', error.response ? error.response.body : error.message);
     res.status(500).send('Failed to send file');
   }
 });
